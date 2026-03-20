@@ -8,45 +8,48 @@ from database import get_or_create_user, update_user_settings
 
 logger = logging.getLogger(__name__)
 
-WELCOME_MSG = """hello. i am cashwhisper.
+WELCOME_MSG = """👋 *Welcome to CashWhisper!*
 
-tell me what you spent (voice or text), and i'll save it.
+I'm your personal expense tracker. Just tell me about your spending — by voice or text — and I'll log everything for you.
 
-· "spent 50k lunch"
-· "20k taxi"
+💬 *Text:* Type something like:
+  `spent 50k on lunch and 20k taxi`
 
-commands:
-/today  · today's spending
-/week   · last 7 days
-/month  · this month
-/report · ai monthly summary
-/help   · all commands
-/options · settings
+🎙 *Voice:* Send a voice message describing your expenses.
 
-let's begin."""
+📊 *Commands:*
+  /today — Today's spending
+  /week — Last 7 days
+  /month — This month
+  /report — Monthly AI coaching report
+  /settings — Your preferences
+  /help — Show this message
 
-HELP_MSG = """help
+Let's get started! 🚀"""
 
-log expenses:
-· text: "120000 uzs groceries" or "50k coffee"
-· voice: describe your spending
+HELP_MSG = """📖 *CashWhisper — Help*
 
-summaries:
-/today  · today
-/week   · last 7 days
-/month  · this month
-/report · ai summary
+*Logging expenses:*
+• Send a text message: `120000 uzs groceries` or `spent 80k on food`
+• Send a voice message describing your spending
+• I'll auto-categorize and save everything!
 
-settings:
-/options · view settings
-/currency USD · change currency
-/timezone America/New_York · change timezone
-/reminder on/off · toggle daily check-in
-/reminder 21:00 · set time
+*Summary commands:*
+• /today — Today's total & categories
+• /week — Last 7 days breakdown
+• /month — Current month overview
+• /report — Get an AI-powered monthly coaching report
 
-categories:
-food, transport, groceries, shopping, bills, subscriptions, entertainment, health, education, other"""
+*Settings:*
+• /settings — View & update your preferences
+• /currency USD — Change your base currency
+• /timezone America/New_York — Change timezone
+• /reminder on — Enable daily check-in
+• /reminder off — Disable daily check-in
+• /reminder 21:00 — Set reminder time
 
+*Categories:*
+food · transport · groceries · shopping · bills · subscriptions · entertainment · health · education · other"""
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -71,53 +74,67 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user = update.effective_user
     db_user = await get_or_create_user(telegram_user_id=user.id)
 
-    reminder_status = "on" if db_user["daily_reminder_enabled"] else "off"
+    reminder_status = "✅ On" if db_user["daily_reminder_enabled"] else "❌ Off"
     msg = (
-        "settings\n\n"
-        f"currency · {db_user['currency']}\n"
-        f"timezone · {db_user['timezone']}\n"
-        f"reminder · {reminder_status} at {db_user['daily_reminder_time']}\n"
+        "⚙️ *Your Settings*\n\n"
+        f"💱 Currency: `{db_user['currency']}`\n"
+        f"🌍 Timezone: `{db_user['timezone']}`\n"
+        f"⏰ Daily reminder: {reminder_status}\n"
+        f"🕘 Reminder time: `{db_user['daily_reminder_time']}`\n\n"
+        "*Update with:*\n"
+        "`/currency USD`\n"
+        "`/timezone America/New_York`\n"
+        "`/reminder on` or `/reminder off`\n"
+        "`/reminder 21:00`"
     )
-    await update.message.reply_text(msg)
-
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 async def currency_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /currency <CODE> — change base currency."""
     if not context.args:
-        await update.message.reply_text("usage: /currency USD")
+        await update.message.reply_text("Usage: `/currency USD`", parse_mode="Markdown")
         return
     currency = context.args[0].upper()
     await update_user_settings(update.effective_user.id, currency=currency)
-    await update.message.reply_text(f"currency set to {currency}")
+    await update.message.reply_text(f"✅ Currency set to *{currency}*", parse_mode="Markdown")
+
 
 async def timezone_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /timezone <TZ> — change timezone."""
     if not context.args:
-        await update.message.reply_text("usage: /timezone Asia/Tashkent")
+        await update.message.reply_text(
+            "Usage: `/timezone Asia/Tashkent`", parse_mode="Markdown"
+        )
         return
     tz = context.args[0]
     await update_user_settings(update.effective_user.id, timezone=tz)
-    await update.message.reply_text(f"timezone set to {tz}")
-
+    await update.message.reply_text(f"✅ Timezone set to *{tz}*", parse_mode="Markdown")
 
 
 async def reminder_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /reminder on|off|HH:MM — configure daily check-in."""
     if not context.args:
-        await update.message.reply_text("usage: /reminder on|off|21:00")
+        await update.message.reply_text(
+            "Usage:\n`/reminder on` — enable\n`/reminder off` — disable\n`/reminder 21:00` — set time",
+            parse_mode="Markdown",
+        )
         return
 
     arg = context.args[0].lower()
     if arg == "on":
         await update_user_settings(update.effective_user.id, daily_reminder_enabled=True)
-        await update.message.reply_text("daily reminder on")
+        await update.message.reply_text("✅ Daily reminder *enabled*!", parse_mode="Markdown")
     elif arg == "off":
         await update_user_settings(update.effective_user.id, daily_reminder_enabled=False)
-        await update.message.reply_text("daily reminder off")
+        await update.message.reply_text("✅ Daily reminder *disabled*.", parse_mode="Markdown")
     elif ":" in arg:
         await update_user_settings(update.effective_user.id, daily_reminder_time=arg)
-        await update.message.reply_text(f"reminder time set to {arg}")
+        await update.message.reply_text(
+            f"✅ Reminder time set to *{arg}*", parse_mode="Markdown"
+        )
     else:
-        await update.message.reply_text("usage: /reminder on|off|21:00")
-
+        await update.message.reply_text(
+            "❓ Use `/reminder on`, `/reminder off`, or `/reminder 21:00`",
+            parse_mode="Markdown",
+        )

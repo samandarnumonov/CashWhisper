@@ -11,10 +11,26 @@ from services.reporter import generate_monthly_report
 logger = logging.getLogger(__name__)
 
 
+def _category_emoji(category: str) -> str:
+    emojis = {
+        "food": "🍽",
+        "transport": "🚕",
+        "groceries": "🛒",
+        "shopping": "🛍",
+        "bills": "🧾",
+        "subscriptions": "📱",
+        "entertainment": "🎬",
+        "health": "💊",
+        "education": "📚",
+        "other": "📌",
+    }
+    return emojis.get(category, "📌")
+
+
 def _build_summary_message(title: str, expenses: list[dict], currency: str) -> str:
     """Build a formatted summary from a list of expense rows."""
     if not expenses:
-        return f"{title}\n\nno expenses logged for this period."
+        return f"{title}\n\n😌 No expenses logged for this period."
 
     # Group by category
     by_category: dict[str, float] = {}
@@ -28,25 +44,25 @@ def _build_summary_message(title: str, expenses: list[dict], currency: str) -> s
     # Sort by amount descending
     sorted_cats = sorted(by_category.items(), key=lambda x: x[1], reverse=True)
 
-    lines = [f"{title.lower()}\n"]
+    lines = [title, ""]
     for cat, amount in sorted_cats:
+        emoji = _category_emoji(cat)
         pct = (amount / total * 100) if total > 0 else 0
         if amount == int(amount):
             amt_str = f"{int(amount):,}"
         else:
             amt_str = f"{amount:,.2f}"
-        lines.append(f"· {amt_str} {currency}  {cat} ({pct:.0f}%)")
+        lines.append(f"  {emoji} {cat.capitalize()}: *{amt_str} {currency}* ({pct:.0f}%)")
 
+    lines.append("")
     if total == int(total):
         total_str = f"{int(total):,}"
     else:
         total_str = f"{total:,.2f}"
-        
-    lines.append(f"\n{'—' * 18}\n  {total_str} {currency}  total")
-    lines.append(f"\n({len(expenses)} transactions)")
+    lines.append(f"💰 *Total: {total_str} {currency}*")
+    lines.append(f"📝 {len(expenses)} transaction{'s' if len(expenses) > 1 else ''}")
 
     return "\n".join(lines)
-
 
 
 async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -57,8 +73,8 @@ async def today_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     today = str(date.today())
     expenses = await get_expenses_by_range(db_user["id"], today, today)
 
-    msg = _build_summary_message("today", expenses, db_user["currency"])
-    await update.message.reply_text(msg)
+    msg = _build_summary_message("📅 *Today's Spending*", expenses, db_user["currency"])
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 async def week_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -70,9 +86,9 @@ async def week_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     week_ago = today - timedelta(days=6)
     expenses = await get_expenses_by_range(db_user["id"], str(week_ago), str(today))
 
-    title = f"last 7 days ({week_ago.strftime('%b %d').lower()} – {today.strftime('%b %d').lower()})"
+    title = f"📊 *Last 7 Days* ({week_ago.strftime('%b %d')} – {today.strftime('%b %d')})"
     msg = _build_summary_message(title, expenses, db_user["currency"])
-    await update.message.reply_text(msg)
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 async def month_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -84,9 +100,9 @@ async def month_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     start = today.replace(day=1)
     expenses = await get_expenses_by_range(db_user["id"], str(start), str(today))
 
-    title = f"{today.strftime('%B %Y').lower()}"
+    title = f"📆 *{today.strftime('%B %Y')}*"
     msg = _build_summary_message(title, expenses, db_user["currency"])
-    await update.message.reply_text(msg)
+    await update.message.reply_text(msg, parse_mode="Markdown")
 
 
 async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -100,7 +116,9 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     summary = await get_monthly_summary(db_user["id"], today.year, today.month)
 
     if summary["total_spent"] == 0:
-        await update.message.reply_text("no expenses logged this month yet.")
+        await update.message.reply_text(
+            "📊 No expenses logged this month yet. Start tracking and come back later!"
+        )
         return
 
     # Get previous month for comparison
@@ -114,4 +132,7 @@ async def report_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     report = await generate_monthly_report(summary, previous_month_total=prev_total)
 
-    await update.message.reply_text(f"ai report — {today.strftime('%B %Y').lower()}\n\n{report}")
+    await update.message.reply_text(
+        f"📊 *Monthly Report — {today.strftime('%B %Y')}*\n\n{report}",
+        parse_mode="Markdown",
+    )

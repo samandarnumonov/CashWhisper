@@ -26,10 +26,11 @@ async def daily_reminder_job(context: ContextTypes.DEFAULT_TYPE) -> None:
                 await context.bot.send_message(
                     chat_id=user["telegram_user_id"],
                     text=(
-                        "daily check-in\n\n"
-                        "how was your spending today?\n"
-                        "send me a voice or text message with your expenses."
+                        "👋 *Daily Check-in*\n\n"
+                        "How was your spending today? 💸\n"
+                        "Send me a voice or text message with your expenses!"
                     ),
+                    parse_mode="Markdown",
                 )
                 logger.info(
                     "Sent daily reminder to user %s", user["telegram_user_id"]
@@ -82,10 +83,11 @@ async def monthly_report_job(context: ContextTypes.DEFAULT_TYPE) -> None:
 
             report = await generate_monthly_report(summary, previous_month_total=prev_total)
 
-            month_name = datetime(report_year, report_month, 1).strftime("%B %Y").lower()
+            month_name = datetime(report_year, report_month, 1).strftime("%B %Y")
             await context.bot.send_message(
                 chat_id=user["telegram_user_id"],
-                text=f"ai report — {month_name}\n\n{report}",
+                text=f"📊 *Monthly Report — {month_name}*\n\n{report}",
+                parse_mode="Markdown",
             )
             logger.info(
                 "Sent monthly report to user %s", user["telegram_user_id"]
