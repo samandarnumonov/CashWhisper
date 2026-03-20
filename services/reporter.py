@@ -9,10 +9,15 @@ logger = logging.getLogger(__name__)
 
 _client = AsyncOpenAI(api_key=GROQ_API_KEY, base_url=GROQ_BASE_URL)
 
-SYSTEM_PROMPT = """You are a friendly budget coach. Given a user's monthly spending stats,
-explain clearly where their money went and suggest 2–3 practical actions to improve.
-Keep your answer under 200 words. Use emoji to make the message feel friendly.
-Format your response nicely for a Telegram chat (use bold with *text*, and line breaks)."""
+SYSTEM_PROMPT = """You are a budget coach. Given a user's monthly spending stats,
+explain clearly where their money went and suggest 2 practical actions to improve.
+Keep your answer under 100 words.
+CRITICAL RULES FOR YOUR FORMATTING:
+- Use EVERYTHING strictly in lowercase.
+- NO emojis anywhere.
+- NO markdown formatting (no bold, italics, lists — just plain text).
+- Use exact spacing and line breaks for readability."""
+
 
 
 async def generate_monthly_report(
@@ -54,7 +59,7 @@ async def generate_monthly_report(
     except Exception as e:
         logger.error("Failed to generate monthly report: %s", e)
         return (
-            f"📊 *Monthly Report — {summary['month']}*\n\n"
-            f"Total spent: {summary['total_spent']:,.0f} {summary['currency']}\n\n"
-            "_(Detailed AI summary unavailable right now.)_"
+            f"ai report — {str(summary['month']).lower()}\n\n"
+            f"total spent: {summary['total_spent']:,.0f} {summary['currency']}\n\n"
+            "detailed ai summary unavailable right now."
         )

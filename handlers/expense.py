@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 def _format_confirmation(expenses: list[dict]) -> str:
     """Build a nice confirmation message from parsed expenses."""
     if not expenses:
-        return "🤔 I couldn't find any expenses in your message. Try something like:\n`spent 50k on lunch and 20k taxi`"
+        return "couldn't find expenses in your message."
 
     lines = []
     total_by_currency: dict[str, float] = {}
@@ -31,14 +31,13 @@ def _format_confirmation(expenses: list[dict]) -> str:
         else:
             amt_str = f"{amt:,.2f}"
 
-        emoji = _category_emoji(cat)
-        line = f"  {emoji} {amt_str} {cur} — {desc}" if desc else f"  {emoji} {amt_str} {cur} ({cat})"
+        line = f"· {amt_str} {cur}  {desc}" if desc else f"· {amt_str} {cur}  {cat}"
         lines.append(line)
 
         total_by_currency[cur] = total_by_currency.get(cur, 0) + amt
 
     count = len(expenses)
-    header = f"✅ Logged *{count} expense{'s' if count > 1 else ''}*:\n"
+    header = f"✓ {count} expense{'s' if count > 1 else ''} saved\n"
 
     # Total line
     totals = []
@@ -48,26 +47,10 @@ def _format_confirmation(expenses: list[dict]) -> str:
         else:
             totals.append(f"{total:,.2f} {cur}")
 
-    footer = f"\n💰 Total: *{' + '.join(totals)}*"
+    footer = f"\n{'—' * 18}\n  {' + '.join(totals)}  total"
 
-    return header + "\n".join(lines) + footer
+    return header + "\n" + "\n".join(lines) + footer
 
-
-def _category_emoji(category: str) -> str:
-    """Return an emoji for the expense category."""
-    emojis = {
-        "food": "🍽",
-        "transport": "🚕",
-        "groceries": "🛒",
-        "shopping": "🛍",
-        "bills": "🧾",
-        "subscriptions": "📱",
-        "entertainment": "🎬",
-        "health": "💊",
-        "education": "📚",
-        "other": "📌",
-    }
-    return emojis.get(category, "📌")
 
 
 async def handle_text_expense(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -106,7 +89,7 @@ async def handle_text_expense(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
 
     reply = _format_confirmation(expenses)
-    await update.message.reply_text(reply, parse_mode="Markdown")
+    await update.message.reply_text(reply)
 
 
 async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -125,7 +108,7 @@ async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYP
     # Download the voice file
     voice = update.message.voice or update.message.audio
     if not voice:
-        await update.message.reply_text("⚠️ I couldn't read that audio. Please try again.")
+        await update.message.reply_text("couldn't read that audio.")
         return
 
     try:
@@ -133,7 +116,7 @@ async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYP
         audio_bytes = await file.download_as_bytearray()
     except Exception as e:
         logger.error("Failed to download voice for user %s: %s", user.id, e)
-        await update.message.reply_text("⚠️ Couldn't download your voice message. Please try again.")
+        await update.message.reply_text("couldn't download your voice message.")
         return
 
     # Transcribe
@@ -141,11 +124,11 @@ async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYP
         transcript = await transcribe_voice(bytes(audio_bytes))
     except Exception as e:
         logger.error("Transcription failed for user %s: %s", user.id, e)
-        await update.message.reply_text("⚠️ Couldn't transcribe your voice message. Please try again.")
+        await update.message.reply_text("couldn't transcribe your voice message.")
         return
 
     if not transcript:
-        await update.message.reply_text("🤔 I couldn't hear anything in that message. Try again?")
+        await update.message.reply_text("couldn't hear anything in that message.")
         return
 
     # Parse expenses from transcript
@@ -153,9 +136,7 @@ async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYP
         expenses = await parse_expenses(transcript, base_currency=db_user["currency"])
     except Exception as e:
         logger.error("Error parsing expenses for user %s: %s", user.id, e)
-        await update.message.reply_text(
-            "⚠️ Sorry, I had trouble understanding that. Please try again!"
-        )
+        await update.message.reply_text("sorry, i couldn't understand that.")
         return
 
     if expenses:
@@ -168,5 +149,5 @@ async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # Build reply with transcription preview
     transcript_preview = transcript[:100] + ("..." if len(transcript) > 100 else "")
-    reply = f'🎙 _"{transcript_preview}"_\n\n' + _format_confirmation(expenses)
-    await update.message.reply_text(reply, parse_mode="Markdown")
+    reply = f'"{transcript_preview}"\n\n' + _format_confirmation(expenses)
+    await update.message.reply_text(reply)
