@@ -43,7 +43,7 @@ HELP_MSG = """📖 *CashWhisper — Help*
 *Settings:*
 • /settings — View & update your preferences
 • /currency USD — Change your base currency
-• /timezone America/New_York — Change timezone
+• /timezone Europe/London — Change timezone
 • /reminder on — Enable daily check-in
 • /reminder off — Disable daily check-in
 • /reminder 21:00 — Set reminder time
@@ -78,12 +78,12 @@ async def settings_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     msg = (
         "⚙️ *Your Settings*\n\n"
         f"💱 Currency: `{db_user['currency']}`\n"
-        f"🌍 Timezone: `{db_user['timezone']}`\n"
+        f"🌍 Timezone: `{db_user['timezone'].replace('_', r'\_')}`\n"
         f"⏰ Daily reminder: {reminder_status}\n"
         f"🕘 Reminder time: `{db_user['daily_reminder_time']}`\n\n"
         "*Update with:*\n"
         "`/currency USD`\n"
-        "`/timezone America/New_York`\n"
+        "`/timezone Europe/London`\n"
         "`/reminder on` or `/reminder off`\n"
         "`/reminder 21:00`"
     )

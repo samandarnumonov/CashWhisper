@@ -49,6 +49,7 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CommandHandler("help", help_command))
     app.add_handler(CommandHandler("settings", settings_command))
+    app.add_handler(CommandHandler("options", settings_command))
     app.add_handler(CommandHandler("currency", currency_command))
     app.add_handler(CommandHandler("timezone", timezone_command))
     app.add_handler(CommandHandler("reminder", reminder_command))
