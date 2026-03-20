@@ -177,8 +177,9 @@ async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYP
             status="pending",
         )
 
-    # Build reply with transcription preview
-    transcript_preview = transcript[:100] + ("..." if len(transcript) > 100 else "")
+    # Escape markdown in transcript to avoid crash
+    safe_transcript = transcript.replace('_', r'\_').replace('*', r'\*').replace('`', r'\`').replace('[', r'\[')
+    transcript_preview = safe_transcript[:100] + ("..." if len(safe_transcript) > 100 else "")
     reply = f'🎙 _"{transcript_preview}"_\n\n' + _format_confirmation(expenses)
     keyboard = [
         [
