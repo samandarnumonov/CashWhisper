@@ -1,7 +1,7 @@
 """Handlers for expense logging — voice and text messages."""
 
 import logging
-from telegram import Update
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 
 from database import get_or_create_user, save_expenses
@@ -103,10 +103,19 @@ async def handle_text_expense(update: Update, context: ContextTypes.DEFAULT_TYPE
             expenses=expenses,
             source="text",
             raw_input=text,
+            message_id=update.message.message_id,
+            status="pending",
         )
 
     reply = _format_confirmation(expenses)
-    await update.message.reply_text(reply, parse_mode="Markdown")
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ Accept", callback_data=f"exp_acc:{update.message.message_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"exp_rej:{update.message.message_id}"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(reply, parse_mode="Markdown", reply_markup=reply_markup)
 
 
 async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -164,9 +173,18 @@ async def handle_voice_expense(update: Update, context: ContextTypes.DEFAULT_TYP
             expenses=expenses,
             source="voice",
             raw_input=transcript,
+            message_id=update.message.message_id,
+            status="pending",
         )
 
     # Build reply with transcription preview
     transcript_preview = transcript[:100] + ("..." if len(transcript) > 100 else "")
     reply = f'🎙 _"{transcript_preview}"_\n\n' + _format_confirmation(expenses)
-    await update.message.reply_text(reply, parse_mode="Markdown")
+    keyboard = [
+        [
+            InlineKeyboardButton("✅ Accept", callback_data=f"exp_acc:{update.message.message_id}"),
+            InlineKeyboardButton("❌ Reject", callback_data=f"exp_rej:{update.message.message_id}"),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(reply, parse_mode="Markdown", reply_markup=reply_markup)

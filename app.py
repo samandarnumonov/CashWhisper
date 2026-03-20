@@ -9,6 +9,7 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
 )
 
@@ -23,6 +24,7 @@ from handlers.start import (
     reminder_command,
 )
 from handlers.expense import handle_text_expense, handle_voice_expense
+from handlers.callback import handle_expense_callback
 from handlers.summary import today_command, week_command, month_command, report_command
 from scheduler import daily_reminder_job, monthly_report_job
 
@@ -58,6 +60,7 @@ def main() -> None:
     # ── Register message handlers ────────────────────────────────────
     app.add_handler(MessageHandler(filters.VOICE | filters.AUDIO, handle_voice_expense))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_expense))
+    app.add_handler(CallbackQueryHandler(handle_expense_callback, pattern="^exp_(acc|rej):"))
 
     # ── Schedule jobs ────────────────────────────────────────────────
     job_queue = app.job_queue

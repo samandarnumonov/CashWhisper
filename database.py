@@ -46,9 +46,20 @@ async def init_db() -> None:
                 category         TEXT    NOT NULL,
                 description      TEXT,
                 source           TEXT    NOT NULL DEFAULT 'text',
-                raw_input        TEXT
+                raw_input        TEXT,
+                message_id       INTEGER,
+                status           TEXT    DEFAULT 'confirmed'
             )
         """)
+        # Run migrations for existing databases
+        try:
+            await db.execute("ALTER TABLE expenses ADD COLUMN message_id INTEGER")
+        except aiosqlite.OperationalError:
+            pass
+        try:
+            await db.execute("ALTER TABLE expenses ADD COLUMN status TEXT DEFAULT 'confirmed'")
+        except aiosqlite.OperationalError:
+            pass
         await db.commit()
     finally:
         await db.close()
@@ -146,6 +157,8 @@ async def save_expenses(
     expenses: list[dict],
     source: str,
     raw_input: str,
+    message_id: Optional[int] = None,
+    status: str = "pending",
 ) -> int:
     """
     Save a list of parsed expenses.
@@ -158,8 +171,8 @@ async def save_expenses(
             await db.execute(
                 """INSERT INTO expenses
                    (user_id, transaction_date, amount, currency, category,
-                    description, source, raw_input)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                    description, source, raw_input, message_id, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     user_id,
                     exp.get("date", str(date.today())),
@@ -169,12 +182,31 @@ async def save_expenses(
                     exp.get("description", ""),
                     source,
                     raw_input,
+                    message_id,
+                    status,
                 ),
             )
         await db.commit()
     finally:
         await db.close()
     return len(expenses)
+
+
+async def update_expense_status(user_id: int, message_id: int, status: str) -> int:
+    """
+    Update the status of expenses tied to a specific message_id.
+    Returns the number of rows updated.
+    """
+    db = await aiosqlite.connect(_db_path)
+    try:
+        cursor = await db.execute(
+            "UPDATE expenses SET status = ? WHERE user_id = ? AND message_id = ?",
+            (status, user_id, message_id)
+        )
+        await db.commit()
+        return cursor.rowcount
+    finally:
+        await db.close()
 
 
 async def get_expenses_by_range(
@@ -191,6 +223,7 @@ async def get_expenses_by_range(
                WHERE user_id = ?
                  AND transaction_date >= ?
                  AND transaction_date <= ?
+                 AND status = 'confirmed'
                ORDER BY transaction_date, created_at""",
             (user_id, start_date, end_date),
         )
@@ -219,6 +252,7 @@ async def get_monthly_summary(user_id: int, year: int, month: int) -> dict:
             """SELECT COALESCE(SUM(amount), 0) as total, currency
                FROM expenses
                WHERE user_id = ? AND transaction_date >= ? AND transaction_date < ?
+                 AND status = 'confirmed'
                GROUP BY currency""",
             (user_id, start, end),
         )
@@ -229,6 +263,7 @@ async def get_monthly_summary(user_id: int, year: int, month: int) -> dict:
             """SELECT category, SUM(amount) as amount, currency
                FROM expenses
                WHERE user_id = ? AND transaction_date >= ? AND transaction_date < ?
+                 AND status = 'confirmed'
                GROUP BY category, currency
                ORDER BY amount DESC""",
             (user_id, start, end),
