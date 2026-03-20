@@ -4,7 +4,7 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from database import update_expense_status
+from database import update_expense_status, get_or_create_user
 
 logger = logging.getLogger(__name__)
 
@@ -16,12 +16,13 @@ async def handle_expense_callback(update: Update, context: ContextTypes.DEFAULT_
     await query.answer()
 
     user = update.effective_user
+    db_user = await get_or_create_user(telegram_user_id=user.id)
     data = query.data
 
     if data.startswith("exp_acc:"):
         message_id = int(data.split(":")[1])
         # Mark as confirmed
-        updated = await update_expense_status(user.id, message_id, "confirmed")
+        updated = await update_expense_status(db_user["id"], message_id, "confirmed")
         if updated > 0:
             # Edit message to remove keyboard and append confirmation text
             new_text = query.message.text + "\n\n✅ *Confirmed and saved!*"
@@ -34,7 +35,7 @@ async def handle_expense_callback(update: Update, context: ContextTypes.DEFAULT_
     elif data.startswith("exp_rej:"):
         message_id = int(data.split(":")[1])
         # Mark as rejected
-        updated = await update_expense_status(user.id, message_id, "rejected")
+        updated = await update_expense_status(db_user["id"], message_id, "rejected")
         if updated > 0:
             # Edit message to remove keyboard and append rejection text
             new_text = query.message.text + "\n\n❌ *Rejected! Please type or speak it again correctly.*"
